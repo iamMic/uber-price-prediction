@@ -51,10 +51,8 @@ if st.button("Calculate Estimated Fare", use_container_width=True):
         
         prediction = model.predict(features)
         
-        # 6. Display Results
-
-# To this (adding [0] ensures we target the number, not the array):
-st.success(f"### Estimated Fare: ₦{float(prediction[0]):,.2f}")
+        # 6. Display Results (Targeting the float inside the numpy array)
+        st.success(f"### Estimated Fare: ₦{float(prediction[0]):,.2f}")
         
         # Optional: Add a map for visual appeal
         map_df = pd.DataFrame({
