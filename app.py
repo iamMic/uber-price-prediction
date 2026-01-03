@@ -5,7 +5,11 @@ import pandas as pd
 from datetime import datetime
 
 # 1. Load the trained model
-model = joblib.load('lrmodel.pkl')
+# Ensure 'lrmodel.pkl' is in the same folder as this script
+try:
+    model = joblib.load('lrmodel.pkl')
+except FileNotFoundError:
+    st.error("Model file 'lrmodel.pkl' not found. Please check the file path.")
 
 # 2. Streamlit UI Design
 st.set_page_config(page_title="Uber Fare Predictor", page_icon="🚗")
@@ -42,16 +46,21 @@ with col5:
 # 5. Prediction Logic
 if st.button("Calculate Estimated Fare", use_container_width=True):
     try:
-        # Features: [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, passenger_count, pickup_hour, pickup_day]
+        # Features must be in a 2D array: [[feature1, feature2, ...]]
         features = np.array([[p_lon, p_lat, d_lon, d_lat, passengers, hour, day]])
         
+        # Make the prediction
         prediction = model.predict(features)
         
-        # FIX: We convert the first element of the array to a float before formatting
-        fare = float(prediction[0])
+        # THE FIX: Flatten the output and convert the first element to a float
+        # This handles nested arrays like [[value]], Series, or single-item lists
+        fare = float(np.array(prediction).ravel()[0])
         
         # 6. Display Results
-        st.success(f"### Estimated Fare: ₦{fare:,.2f}")
+        if fare < 0:
+            st.warning("The model predicted a negative fare. Please check your coordinate inputs.")
+        else:
+            st.success(f"### Estimated Fare: ₦{fare:,.2f}")
         
         # Add a map for visual appeal
         map_df = pd.DataFrame({
@@ -62,4 +71,4 @@ if st.button("Calculate Estimated Fare", use_container_width=True):
         
     except Exception as e:
         st.error(f"Prediction Error: {e}")
-        st.info("Check if your model file matches the feature inputs.")
+        st.info("Technical Note: This usually happens if the model output shape doesn't match the expected scalar format.")
