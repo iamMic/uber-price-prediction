@@ -5,7 +5,6 @@ import pandas as pd
 from datetime import datetime
 
 # 1. Load the trained model
-# Ensure the name matches your uploaded file exactly
 model = joblib.load('lrmodel.pkl')
 
 # 2. Streamlit UI Design
@@ -34,10 +33,8 @@ col3, col4, col5 = st.columns(3)
 with col3:
     passengers = st.number_input("Passengers", min_value=1, max_value=6, value=1)
 with col4:
-    # Get current hour or let user select
     hour = st.slider("Pickup Hour (24h)", 0, 23, datetime.now().hour)
 with col5:
-    # 0=Monday, 6=Sunday
     day = st.selectbox("Day of Week", 
                       options=[0, 1, 2, 3, 4, 5, 6], 
                       format_func=lambda x: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][x])
@@ -45,16 +42,18 @@ with col5:
 # 5. Prediction Logic
 if st.button("Calculate Estimated Fare", use_container_width=True):
     try:
-        # IMPORTANT: Features must be in the exact order used during training:
-        # ['pickup_longitude', 'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude', 'passenger_count', 'pickup_hour', 'pickup_day']
+        # Features: [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, passenger_count, pickup_hour, pickup_day]
         features = np.array([[p_lon, p_lat, d_lon, d_lat, passengers, hour, day]])
         
         prediction = model.predict(features)
         
-        # 6. Display Results (Targeting the float inside the numpy array)
-        st.success(f"### Estimated Fare: ₦{float(prediction[0]):,.2f}")
+        # FIX: We convert the first element of the array to a float before formatting
+        fare = float(prediction[0])
         
-        # Optional: Add a map for visual appeal
+        # 6. Display Results
+        st.success(f"### Estimated Fare: ₦{fare:,.2f}")
+        
+        # Add a map for visual appeal
         map_df = pd.DataFrame({
             'lat': [p_lat, d_lat],
             'lon': [p_lon, d_lon]
