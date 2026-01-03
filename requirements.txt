@@ -2,8 +2,4 @@ streamlit
 pandas
 numpy
 scikit-learn
-<<<<<<< HEAD
 joblib
-=======
-joblib
->>>>>>> 88239e2fd5a061eacbe0c84488dab269f099710f
