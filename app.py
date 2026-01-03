@@ -2,60 +2,65 @@ import streamlit as st
 import joblib
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
-# 1. Haversine Function (To turn coordinates into distance)
-def haversine(lon1, lat1, lon2, lat2):
-    r = 6371 # Earth's radius in km
-    lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
-    c = 2 * np.arcsin(np.sqrt(a))
-    return r * c
-
-# 2. Load the trained model
-# Make sure your model file is named 'uber_model.pkl' in the same folder
+# 1. Load the trained model
+# Ensure the name matches your uploaded file exactly
 model = joblib.load('lrmodel.pkl')
 
-# 3. Streamlit UI Design
+# 2. Streamlit UI Design
 st.set_page_config(page_title="Uber Fare Predictor", page_icon="🚗")
 st.title("🚗 Uber Price Prediction Engine")
-st.markdown("Estimate your trip cost based on location and time.")
+st.markdown("Enter trip details below to estimate the fare.")
 
-# 4. Input Layout
+# 3. Input Layout - Coordinates
+st.subheader("📍 Location Coordinates")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Pickup Location")
-    p_lat = st.number_input("Pickup Latitude", value=6.5244) # Default: Lagos
-    p_lon = st.number_input("Pickup Longitude", value=3.3792)
+    p_lon = st.number_input("Pickup Longitude", value=3.3792, format="%.6f")
+    p_lat = st.number_input("Pickup Latitude", value=6.5244, format="%.6f")
 
 with col2:
-    st.subheader("Dropoff Location")
-    d_lat = st.number_input("Dropoff Latitude", value=6.4531) # Default: Lekki
-    d_lon = st.number_input("Dropoff Longitude", value=3.4682)
+    d_lon = st.number_input("Dropoff Longitude", value=3.4682, format="%.6f")
+    d_lat = st.number_input("Dropoff Latitude", value=6.4531, format="%.6f")
 
 st.divider()
 
-# Time and Passenger inputs
-col3, col4 = st.columns(2)
+# 4. Input Layout - Trip Details
+st.subheader("📅 Trip Details")
+col3, col4, col5 = st.columns(3)
+
 with col3:
-    hour = st.slider("Hour of Day (24hr)", 0, 23, 12)
+    passengers = st.number_input("Passengers", min_value=1, max_value=6, value=1)
 with col4:
-    passengers = st.selectbox("Number of Passengers", [1, 2, 3, 4, 5, 6])
+    # Get current hour or let user select
+    hour = st.slider("Pickup Hour (24h)", 0, 23, datetime.now().hour)
+with col5:
+    # 0=Monday, 6=Sunday
+    day = st.selectbox("Day of Week", 
+                      options=[0, 1, 2, 3, 4, 5, 6], 
+                      format_func=lambda x: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][x])
 
 # 5. Prediction Logic
 if st.button("Calculate Estimated Fare", use_container_width=True):
-    # Calculate distance from inputs
-    distance = haversine(p_lon, p_lat, d_lon, d_lat)
-    
-    # Prepare features for the model (matching the order in your training script)
-    # [distance_km, hour, day_of_week, passenger_count]
-    # Assuming day_of_week is Friday (4) for this example
-    input_data = np.array([[distance, hour, 4, passengers]]) 
-    
-    prediction = model.predict(input_data)
-    
-    # 6. Display Results
-    st.success(f"### Estimated Fare: ₦{prediction[0]:,.2f}")
-    st.info(f"Calculated Distance: {distance:.2f} km")
+    try:
+        # IMPORTANT: Features must be in the exact order used during training:
+        # ['pickup_longitude', 'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude', 'passenger_count', 'pickup_hour', 'pickup_day']
+        features = np.array([[p_lon, p_lat, d_lon, d_lat, passengers, hour, day]])
+        
+        prediction = model.predict(features)
+        
+        # 6. Display Results
+        st.success(f"### Estimated Fare: ₦{prediction[0]:,.2f}")
+        
+        # Optional: Add a map for visual appeal
+        map_df = pd.DataFrame({
+            'lat': [p_lat, d_lat],
+            'lon': [p_lon, d_lon]
+        })
+        st.map(map_df)
+        
+    except Exception as e:
+        st.error(f"Prediction Error: {e}")
+        st.info("Check if your model file matches the feature inputs.")
